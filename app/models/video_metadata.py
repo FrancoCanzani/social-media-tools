@@ -11,6 +11,7 @@ class VideoMetadata(BaseModel):
     thumbnail: str
     description: Optional[str]
     keywords: List[str]
+    resolutions: List[str]
     publish_date: date
     length: int
     rating: Optional[float]
