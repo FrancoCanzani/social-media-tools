@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
-from utils.video_utils import merge_video_audio_ffmpeg
+from app.utils.video_utils import merge_video_audio_ffmpeg
 from pytube import YouTube
 from pytube.exceptions import VideoUnavailable, AgeRestrictedError
 from urllib.parse import unquote
-from utils.file_utils import remove_file
-from models.video_metadata import VideoMetadata
+from app.utils.file_utils import remove_file
+from app.models.video_metadata import VideoMetadata
 import os
 
 # Set the path to ffmpeg executable
