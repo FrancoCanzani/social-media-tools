@@ -8,4 +8,4 @@ app.include_router(youtube.router, prefix="/youtube", tags=["youtube"])
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"msg": "Hello World"}
