@@ -15,7 +15,6 @@ FFMPEG_PATH = (
 
 router = APIRouter()
 
-
 @router.get("/video/metadata", response_model=VideoMetadata)
 def get_video_metadata(url: str):
     try:
@@ -59,7 +58,7 @@ def get_video_metadata(url: str):
 
 
 @router.get("/video/download")
-def download_video(url: str, background_tasks: BackgroundTasks):
+def download_video(url: str, res: str, background_tasks: BackgroundTasks):
     try:
         decoded_url = unquote(url)
         yt = YouTube(decoded_url)
@@ -69,7 +68,7 @@ def download_video(url: str, background_tasks: BackgroundTasks):
             status_code=400, detail=f"Video {url} is unavailable, skipping."
         )
 
-    video_stream = yt.streams.filter(file_extension="mp4", only_video=True).first()
+    video_stream = yt.streams.filter(file_extension="mp4", only_video=True, resolution=res).first()
     audio_stream = yt.streams.filter(only_audio=True, file_extension="mp4").first()
 
     if not video_stream or not audio_stream:
@@ -77,7 +76,7 @@ def download_video(url: str, background_tasks: BackgroundTasks):
 
     video_path = video_stream.download(filename="temp_video.mp4")
     audio_path = audio_stream.download(filename="temp_audio.mp4")
-    output_path = "final_output.mp4"
+    output_path = f"{yt.title.replace(" ", "_")}.mp4"
 
     # Ensure ffmpeg path is set
     os.environ["PATH"] += os.pathsep + os.path.dirname(FFMPEG_PATH)
