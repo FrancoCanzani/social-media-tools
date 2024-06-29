@@ -79,7 +79,7 @@ def download_video(url: str, res: str, background_tasks: BackgroundTasks):
 
     video_path = video_stream.download(filename="temp_video.mp4")
     audio_path = audio_stream.download(filename="temp_audio.mp4")
-    output_path = f"{yt.title.replace(" ", "_")}.mp4"
+    output_path = f"{yt.title.replace(' ', '_')}.mp4"
 
     # Ensure ffmpeg path is set
     os.environ["PATH"] += os.pathsep + os.path.dirname(FFMPEG_PATH)
