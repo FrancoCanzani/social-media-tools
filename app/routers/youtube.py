@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from app.utils.video_utils import merge_video_audio_ffmpeg
 from pytube import YouTube
-from pytube.exceptions import VideoUnavailable, AgeRestrictedError
+from pytube.exceptions import VideoUnavailable, AgeRestrictedError, PytubeError
 from urllib.parse import unquote
 from app.utils.file_utils import remove_file
 from app.models.video_metadata import VideoMetadata
@@ -34,11 +34,21 @@ def get_video_metadata(url: str):
 
     except VideoUnavailable:
         raise HTTPException(
-            status_code=400, detail=f"Video {url} is unavailable, skipping."
+            status_code=400, detail=f"Video {url} is unavailable."
         )
 
     except AgeRestrictedError:
         raise HTTPException(status_code=403, detail=f"Video {url} is age restricted.")
+
+    except PytubeError:
+        raise HTTPException(
+            status_code=500, detail="An error occurred while processing the video with Pytube."
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred."
+        )
 
     else:
         return {
@@ -66,7 +76,22 @@ def download_video(url: str, res: str, background_tasks: BackgroundTasks):
 
     except VideoUnavailable:
         raise HTTPException(
-            status_code=400, detail=f"Video {url} is unavailable, skipping."
+            status_code=400, detail=f"Video {url} is unavailable."
+        )
+
+    except AgeRestrictedError:
+        raise HTTPException(
+            status_code=403, detail=f"Video {url} is age restricted."
+        )
+
+    except PytubeError:
+        raise HTTPException(
+            status_code=500, detail="An error occurred while processing the video with Pytube."
+        )
+
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred."
         )
 
     video_stream = yt.streams.filter(
@@ -74,20 +99,34 @@ def download_video(url: str, res: str, background_tasks: BackgroundTasks):
     ).first()
     audio_stream = yt.streams.filter(only_audio=True, file_extension="mp4").first()
 
-    if not video_stream or not audio_stream:
-        raise HTTPException(status_code=404, detail="Video or audio stream not found")
+    if not video_stream:
+        raise HTTPException(status_code=404, detail="Video stream not found")
 
-    video_path = video_stream.download(filename="temp_video.mp4")
-    audio_path = audio_stream.download(filename="temp_audio.mp4")
+    if not audio_stream:
+        raise HTTPException(status_code=404, detail="Audio stream not found")
+
+    try:
+        video_path = video_stream.download(filename="temp_video.mp4")
+        audio_path = audio_stream.download(filename="temp_audio.mp4")
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Error downloading video or audio stream."
+        )
+
     output_path = f"{yt.title.replace(' ', '_')}.mp4"
 
     # Ensure ffmpeg path is set
     os.environ["PATH"] += os.pathsep + os.path.dirname(FFMPEG_PATH)
 
-    merge_video_audio_ffmpeg(video_path, audio_path, output_path)
+    try:
+        merge_video_audio_ffmpeg(video_path, audio_path, output_path)
+    except Exception:
+        raise HTTPException(
+            status_code=500, detail="Error merging video and audio streams."
+        )
 
     if not os.path.exists(output_path):
-        raise HTTPException(status_code=404, detail="Merged video not found")
+        raise HTTPException(status_code=500, detail="Merged video not found")
 
     background_tasks.add_task(remove_file, video_path)
     background_tasks.add_task(remove_file, audio_path)
